@@ -27,7 +27,7 @@ const CHIPS = [
 // 한 화면에 먼저 보여줄 개수 — 나머지는 "더보기"로 펼칩니다.
 const LIST_LIMIT = 5;
 
-// 규정검색·챗봇으로 안 풀리는 질문을 이어서 묻는 Google NotebookLM
+// 규정검색·챗봇으로 안 풀리는 질문을 이어서 묻는 Google Notebook
 // (국가공무원 복무·징계 관련 예규 전문을 소스로 올려 둔 노트북)
 const NOTEBOOK_URL = "https://notebook.google.com/notebook/2dbc1d19-7590-4499-927a-55c4e03b5aa3?authuser=1";
 
@@ -752,7 +752,7 @@ function scenarioCardHtml(sc) {
 function renderNotebook() {
   return `
     <div class="screen notebook-screen">
-      <div class="nb-eyebrow">GOOGLE NOTEBOOK LM</div>
+      <div class="nb-eyebrow">GOOGLE NOTEBOOK</div>
       <h2 class="nb-title">규정검색·챗봇으로 안 되면<br /><span class="hi">여기서 파고듭니다</span></h2>
 
       <div class="question-card">
@@ -786,9 +786,11 @@ function renderNotebook() {
       <p class="nb-note">참고자료는 판단을 돕기 위한 것이며, 법 개정 등 변경사항은 별도로 확인해 주세요.</p>
 
       <div class="nb-closing">
-        복무왕 app 안에는 국가공무원 복무·징계 예규 전체가 담겨져 있습니다.<br />
-        복무 관련 궁금한 사항은 앞자리 선배보다 복무왕 app이 더 정확합니다.<br />
-        (기관에 따라 달리 운영되는 내용도 있음)
+        <strong>더 확인이 필요하면</strong>
+        <ul>
+          <li>규정검색·챗봇에 없으면 → 위 예규 PDF·Notebook</li>
+          <li>문의사항은 기관 복무담당자에게 한번 더 확인</li>
+        </ul>
       </div>
 
       <p class="nb-credit">만든이 · 산림교육원 장우형</p>
