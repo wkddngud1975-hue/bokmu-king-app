@@ -468,10 +468,30 @@ function computeDir(fromScreen, toScreen) {
   return toIdx > fromIdx ? "enter-from-right" : "enter-from-left";
 }
 
+// 이용 기록 호출부. analytics.js 가 없거나 실패해도 앱 동작에는 영향이 없어야 하므로
+// 호출은 반드시 이 함수를 통해서만 합니다.
+function track(name, props) {
+  try {
+    if (window.bokmuTrack) window.bokmuTrack(name, props);
+  } catch (_) { /* 기록 실패가 화면 동작을 막지 않도록 삼킵니다 */ }
+}
+
+function trackSearch(q, regHits, scHits) {
+  try {
+    if (window.bokmuTrackSearch) window.bokmuTrackSearch(q, regHits, scHits);
+  } catch (_) {}
+}
+
+function sanitizeForLog(text) {
+  try {
+    return window.bokmuSanitize ? window.bokmuSanitize(text) : "";
+  } catch (_) { return ""; }
+}
+
 function applyScreen(screen, dir) {
   state.screen = screen;
-  if (window.bokmuTrack) window.bokmuTrack("screen", { tab: screen });
   render();
+  track("screen", { tab: screen });
   if (dir) {
     const el = document.querySelector(".screen");
     if (el) {
@@ -845,8 +865,9 @@ function openDetail(id) {
   const reg = state.regulations.find((r) => r.id === id);
   if (!reg) return;
   state.current = reg;
-  if (window.bokmuTrack) window.bokmuTrack("reg_open", { id: reg.id, cat: reg.category });
   go("detail");
+  // 화면 전환이 끝난 뒤에 기록합니다. 기록이 실패해도 화면은 이미 넘어간 상태입니다.
+  track("reg_open", { id: reg.id, cat: reg.category });
 }
 
 function openNotebook(seed) {
@@ -867,7 +888,7 @@ function bindScenarioToggles(root) {
       const willShow = panel.hidden;
       panel.hidden = !willShow;
       btn.textContent = willShow ? "판정 접기" : "판정 보기";
-      if (willShow && window.bokmuTrack) window.bokmuTrack("verdict", { id: btn.dataset.scId });
+      if (willShow) track("verdict", { id: btn.dataset.scId });
     });
   });
 }
@@ -879,14 +900,12 @@ function submitChat(text) {
   state.chatMessages.push({ role: "user", text: q });
   state.chatMessages.push({ role: "bot", response });
   state.chatDraft = "";
-  if (window.bokmuTrack) {
-    // 규정을 못 찾은 질문만 (숫자를 지우고 30자로 잘라) 남깁니다.
-    const missed = response.verdict === "💡 복무규정 질의 안내";
-    const clean = window.bokmuSanitize ? window.bokmuSanitize(q) : "";
-    if (missed && clean) window.bokmuTrack("chat_miss", { q: clean });
-    else window.bokmuTrack("chat", { len: q.length });
-  }
   render();
+  // 규정을 못 찾은 질문만 (숫자를 지우고 30자로 잘라) 남깁니다.
+  const missed = response.verdict === "💡 복무규정 질의 안내";
+  const clean = sanitizeForLog(q);
+  if (missed && clean) track("chat_miss", { q: clean });
+  else track("chat", { len: q.length });
 }
 
 function bindEvents() {
@@ -930,7 +949,7 @@ function bindEvents() {
           const target = document.getElementById(btn.dataset.expand);
           if (target) target.classList.remove("clip");
           btn.remove();
-          if (window.bokmuTrack) window.bokmuTrack("more", { id: btn.dataset.expand });
+          track("more", { id: btn.dataset.expand });
         });
       });
     };
@@ -944,7 +963,7 @@ function bindEvents() {
       count.textContent = q ? (regHits + scHits) + "건" : state.regulations.length + "건";
       document.querySelectorAll(".chip[data-chip]").forEach((c) => c.classList.toggle("on", c.dataset.chip === q));
       bindResults();
-      if (window.bokmuTrackSearch) window.bokmuTrackSearch(q, regHits, scHits);
+      trackSearch(q, regHits, scHits);
     };
 
     input.addEventListener("input", update);
@@ -955,8 +974,8 @@ function bindEvents() {
         const turningOff = chip.classList.contains("on");
         input.value = turningOff ? "" : kw;
         // 키워드는 고정 목록(CHIPS)이라 그대로 남겨도 안전합니다.
-        if (!turningOff && window.bokmuTrack) window.bokmuTrack("chip", { kw });
         update();
+        if (!turningOff) track("chip", { kw });
         results.scrollIntoView({ block: "start", behavior: "smooth" });
       });
     });
@@ -990,13 +1009,13 @@ function bindEvents() {
     }
     const cta = document.getElementById("notebook-cta");
     if (cta) cta.addEventListener("click", () => {
-      if (window.bokmuTrack) window.bokmuTrack("notebook_open", {});
       window.open(NOTEBOOK_URL, "_blank", "noopener");
+      track("notebook_open", {});
     });
 
     document.querySelectorAll(".source-row").forEach((row) => {
       row.addEventListener("click", () => {
-        if (window.bokmuTrack) window.bokmuTrack("source_open", {});
+        track("source_open", {});
       });
     });
   }
@@ -1023,6 +1042,6 @@ function bindEvents() {
 // ===========================================================================
 
 history.replaceState({ screen: "intro" }, "");
-if (window.bokmuMarkSession) window.bokmuMarkSession();
+try { if (window.bokmuMarkSession) window.bokmuMarkSession(); } catch (_) {}
 render();
 loadData();

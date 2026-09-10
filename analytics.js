@@ -62,11 +62,20 @@ var BOKMU_ANALYTICS = {
       .slice(0, 30);
   }
 
+  // 저장값이 없거나 형태가 깨져 있어도 항상 온전한 모양으로 돌려줍니다.
+  // (여기서 undefined 가 새어 나가면 호출한 쪽에서 예외가 터집니다)
   function loadLocal() {
-    return safe(function () {
+    var d = safe(function () {
       var raw = localStorage.getItem(LS_KEY);
       return raw ? JSON.parse(raw) : null;
-    }, null) || { events: {}, detail: {}, sessions: 0, first: null, last: null };
+    }, null);
+    if (!d || typeof d !== "object") d = {};
+    if (!d.events || typeof d.events !== "object") d.events = {};
+    if (!d.detail || typeof d.detail !== "object") d.detail = {};
+    if (typeof d.sessions !== "number") d.sessions = 0;
+    if (typeof d.first !== "string") d.first = null;
+    if (typeof d.last !== "string") d.last = null;
+    return d;
   }
 
   function saveLocal(data) {
@@ -131,17 +140,21 @@ var BOKMU_ANALYTICS = {
     });
   }
 
+  // 기록은 부가 기능입니다. 여기서 무슨 일이 생겨도 앱 동작을 막아서는 안 되므로
+  // 전체를 try/catch 로 감싸 예외가 호출한 쪽으로 새어 나가지 않게 합니다.
   function track(name, props) {
-    if (!name) return;
-    recordLocal(name, props);
-    if (CFG.debug) safe(function () { console.log("[복무왕]", name, props || {}); });
-    if (CFG.provider === "umami") sendUmami(name, props);
-    else if (CFG.provider === "goatcounter") sendGoatcounter(name, props);
+    try {
+      if (!name) return;
+      recordLocal(name, props);
+      if (CFG.debug) safe(function () { console.log("[복무왕]", name, props || {}); });
+      if (CFG.provider === "umami") sendUmami(name, props);
+      else if (CFG.provider === "goatcounter") sendGoatcounter(name, props);
+    } catch (_) { /* 기록 실패는 조용히 넘어갑니다 */ }
   }
 
   // 검색은 타이핑마다 부르지 않고, 900ms 멈춘 뒤 한 번만 기록합니다.
   function trackSearch(query, regHits, scHits) {
-    clearTimeout(searchTimer);
+    try { clearTimeout(searchTimer); } catch (_) {}
     var q = String(query || "").trim();
     if (q.length < 2) return;
     searchTimer = setTimeout(function () {
@@ -158,15 +171,17 @@ var BOKMU_ANALYTICS = {
   }
 
   function markSession() {
-    if (sessionMarked) return;
-    sessionMarked = true;
-    var fresh = !safe(function () { return sessionStorage.getItem(SS_KEY); }, null);
-    safe(function () { sessionStorage.setItem(SS_KEY, "1"); });
-    if (!fresh) return;
-    var d = loadLocal();
-    d.sessions = (d.sessions || 0) + 1;
-    saveLocal(d);
-    track("app_open", {});
+    try {
+      if (sessionMarked) return;
+      sessionMarked = true;
+      var fresh = !safe(function () { return sessionStorage.getItem(SS_KEY); }, null);
+      safe(function () { sessionStorage.setItem(SS_KEY, "1"); });
+      if (!fresh) return;
+      var d = loadLocal();
+      d.sessions = (d.sessions || 0) + 1;
+      saveLocal(d);
+      track("app_open", {});
+    } catch (_) { /* 기록 실패는 조용히 넘어갑니다 */ }
   }
 
   // --- 콘솔에서 확인 -------------------------------------------------------
