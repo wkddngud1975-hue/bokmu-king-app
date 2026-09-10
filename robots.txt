@@ -1,0 +1,7 @@
+## 복무왕 — 검색엔진 수집 차단
+## 기관 내부 신규 직원 안내용이라 검색 결과에 노출될 필요가 없습니다.
+## 아울러 index.html 의 <meta name="robots" content="noindex"> 와
+## _headers 의 X-Robots-Tag 로 이중 차단하고 있습니다.
+
+User-agent: *
+Disallow: /

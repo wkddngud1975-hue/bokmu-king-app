@@ -31,15 +31,21 @@ const LIST_LIMIT = 5;
 // (국가공무원 복무·징계 관련 예규 전문을 소스로 올려 둔 노트북)
 const NOTEBOOK_URL = "https://notebook.google.com/notebook/2dbc1d19-7590-4499-927a-55c4e03b5aa3?authuser=1";
 
-// 노트북 화면에서 내려받는 근거 원문 (book/ 폴더)
+// 근거 원문 — 파일을 직접 두지 않고 국가법령정보센터 원문으로 연결합니다.
+// (개정되면 링크 쪽이 항상 최신이라 앱과 원문이 어긋날 일이 없습니다)
 const REFERENCE_SOURCES = [
   {
     title: "국가공무원 복무·징계 관련 예규",
-    meta: "인사혁신처 예규 제213호 · 2026. 6. 23. 시행 · PDF 8.1MB",
-    file: "국가공무원 복무·징계 관련 예규.pdf",
-    kind: "PDF ↓",
+    meta: "인사혁신처 예규 제213호 · 2026. 6. 23. 시행",
+    url: "https://www.law.go.kr/행정규칙/국가공무원복무·징계관련예규/(213,20260623)",
+    kind: "원문 ↗",
+    site: "국가법령정보센터",
   },
 ];
+
+// 규정 상세 화면 하단에 항상 노출되는 확인 문구
+const DETAIL_DISCLAIMER =
+  "이 앱은 예규를 요약·정리한 참고 자료입니다. 실제 복무 처리 전에는 기관 복무담당자에게 확인하세요.";
 
 const EXAMPLE_QUESTIONS = [
   "군 복무기간이 있으면 신규 연가가 며칠 늘어나나요?",
@@ -680,6 +686,8 @@ function renderDetail() {
       <div class="tag-row">
         ${reg.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}
       </div>
+
+      <p class="detail-disclaimer">${esc(DETAIL_DISCLAIMER)}</p>
     </div>
   `;
 }
@@ -775,21 +783,22 @@ function renderNotebook() {
       <div class="sub-head"><span class="label">근거로 붙는 자료</span><span class="rule"></span></div>
       <div class="source-list">
         ${REFERENCE_SOURCES.map((s) => `
-          <a class="source-row" href="book/${encodeURIComponent(s.file)}" download>
+          <a class="source-row" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">
             <span class="info">
               <span class="title">${esc(s.title)}</span>
               <span class="meta">${esc(s.meta)}</span>
+              <span class="meta">${esc(s.site || "")}</span>
             </span>
-            <span class="kind">${esc(s.kind || "PDF ↓")}</span>
+            <span class="kind">${esc(s.kind || "원문 ↗")}</span>
           </a>
         `).join("")}
       </div>
-      <p class="nb-note">참고자료는 판단을 돕기 위한 것이며, 법 개정 등 변경사항은 별도로 확인해 주세요.</p>
+      <p class="nb-note">원문은 국가법령정보센터에서 바로 열립니다. 개정되면 그쪽이 항상 최신입니다.</p>
 
       <div class="nb-closing">
         <strong>더 확인이 필요하면</strong>
         <ul>
-          <li>규정검색·챗봇에 없으면 → 위 예규 PDF·Notebook</li>
+          <li>한 줄 답·챗봇에 없으면 → 위 예규 원문·Notebook</li>
           <li>문의사항은 기관 복무담당자에게 한번 더 확인</li>
         </ul>
       </div>
@@ -987,7 +996,7 @@ function bindEvents() {
 
     document.querySelectorAll(".source-row").forEach((row) => {
       row.addEventListener("click", () => {
-        if (window.bokmuTrack) window.bokmuTrack("pdf_download", {});
+        if (window.bokmuTrack) window.bokmuTrack("source_open", {});
       });
     });
   }

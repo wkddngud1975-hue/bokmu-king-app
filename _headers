@@ -1,0 +1,9 @@
+## Netlify 응답 헤더 설정
+## robots.txt 만으로는 "다른 곳에 링크가 걸린 경우" 주소만 색인될 수 있어
+## X-Robots-Tag 헤더로 한 번 더 막습니다. HTML 이 아닌 파일(json 등)에도 적용됩니다.
+
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
