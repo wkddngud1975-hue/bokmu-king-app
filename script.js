@@ -464,6 +464,7 @@ function computeDir(fromScreen, toScreen) {
 
 function applyScreen(screen, dir) {
   state.screen = screen;
+  if (window.bokmuTrack) window.bokmuTrack("screen", { tab: screen });
   render();
   if (dir) {
     const el = document.querySelector(".screen");
@@ -835,6 +836,7 @@ function openDetail(id) {
   const reg = state.regulations.find((r) => r.id === id);
   if (!reg) return;
   state.current = reg;
+  if (window.bokmuTrack) window.bokmuTrack("reg_open", { id: reg.id, cat: reg.category });
   go("detail");
 }
 
@@ -856,6 +858,7 @@ function bindScenarioToggles(root) {
       const willShow = panel.hidden;
       panel.hidden = !willShow;
       btn.textContent = willShow ? "판정 접기" : "판정 보기";
+      if (willShow && window.bokmuTrack) window.bokmuTrack("verdict", { id: btn.dataset.scId });
     });
   });
 }
@@ -863,9 +866,17 @@ function bindScenarioToggles(root) {
 function submitChat(text) {
   const q = (text || "").trim();
   if (!q) return;
+  const response = answerQuery(q);
   state.chatMessages.push({ role: "user", text: q });
-  state.chatMessages.push({ role: "bot", response: answerQuery(q) });
+  state.chatMessages.push({ role: "bot", response });
   state.chatDraft = "";
+  if (window.bokmuTrack) {
+    // 규정을 못 찾은 질문만 (숫자를 지우고 30자로 잘라) 남깁니다.
+    const missed = response.verdict === "💡 복무규정 질의 안내";
+    const clean = window.bokmuSanitize ? window.bokmuSanitize(q) : "";
+    if (missed && clean) window.bokmuTrack("chat_miss", { q: clean });
+    else window.bokmuTrack("chat", { len: q.length });
+  }
   render();
 }
 
@@ -910,6 +921,7 @@ function bindEvents() {
           const target = document.getElementById(btn.dataset.expand);
           if (target) target.classList.remove("clip");
           btn.remove();
+          if (window.bokmuTrack) window.bokmuTrack("more", { id: btn.dataset.expand });
         });
       });
     };
@@ -917,12 +929,13 @@ function bindEvents() {
     const update = () => {
       state.query = input.value;
       const q = state.query.trim();
+      const regHits = q ? matchRegulations(state.query, "ALL").length : 0;
+      const scHits = q ? matchScenarios(state.query).length : 0;
       results.innerHTML = searchResultsHtml();
-      count.textContent = q
-        ? (matchRegulations(state.query, "ALL").length + matchScenarios(state.query).length) + "건"
-        : state.regulations.length + "건";
+      count.textContent = q ? (regHits + scHits) + "건" : state.regulations.length + "건";
       document.querySelectorAll(".chip[data-chip]").forEach((c) => c.classList.toggle("on", c.dataset.chip === q));
       bindResults();
+      if (window.bokmuTrackSearch) window.bokmuTrackSearch(q, regHits, scHits);
     };
 
     input.addEventListener("input", update);
@@ -930,7 +943,10 @@ function bindEvents() {
       chip.addEventListener("click", () => {
         const kw = chip.dataset.chip;
         // 같은 칩을 다시 누르면 검색 해제
-        input.value = chip.classList.contains("on") ? "" : kw;
+        const turningOff = chip.classList.contains("on");
+        input.value = turningOff ? "" : kw;
+        // 키워드는 고정 목록(CHIPS)이라 그대로 남겨도 안전합니다.
+        if (!turningOff && window.bokmuTrack) window.bokmuTrack("chip", { kw });
         update();
         results.scrollIntoView({ block: "start", behavior: "smooth" });
       });
@@ -964,7 +980,16 @@ function bindEvents() {
       });
     }
     const cta = document.getElementById("notebook-cta");
-    if (cta) cta.addEventListener("click", () => window.open(NOTEBOOK_URL, "_blank", "noopener"));
+    if (cta) cta.addEventListener("click", () => {
+      if (window.bokmuTrack) window.bokmuTrack("notebook_open", {});
+      window.open(NOTEBOOK_URL, "_blank", "noopener");
+    });
+
+    document.querySelectorAll(".source-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        if (window.bokmuTrack) window.bokmuTrack("pdf_download", {});
+      });
+    });
   }
 
   if (state.screen === "chat") {
@@ -989,5 +1014,6 @@ function bindEvents() {
 // ===========================================================================
 
 history.replaceState({ screen: "intro" }, "");
+if (window.bokmuMarkSession) window.bokmuMarkSession();
 render();
 loadData();
