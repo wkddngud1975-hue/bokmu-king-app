@@ -21,8 +21,8 @@
    ========================================================================== */
 
 var BOKMU_ANALYTICS = {
-  // "" 이면 외부 전송 없음. 기관 승인 후 "umami" 또는 "goatcounter" 로 변경.
-  provider: "",
+  // "" 이면 외부 전송 없음. 끄고 싶으면 다시 "" 로 되돌리면 됩니다.
+  provider: "goatcounter",
 
   // provider: "umami" 일 때
   umami: {
@@ -32,7 +32,7 @@ var BOKMU_ANALYTICS = {
 
   // provider: "goatcounter" 일 때
   goatcounter: {
-    host: "",        // 예: "https://bokmu.goatcounter.com"
+    host: "https://bokmu.goatcounter.com",
   },
 
   local: true,       // 이 브라우저에만 쌓는 집계 (외부 전송 아님)
@@ -126,18 +126,32 @@ var BOKMU_ANALYTICS = {
     });
   }
 
+  // GoatCounter /count 픽셀 엔드포인트로 전송합니다.
+  // 파라미터는 공식 문서 기준: p(경로/이벤트명) t(제목) e(이벤트 여부)
+  //                          r(리퍼러) s(화면크기) rnd(캐시 방지)
+  // rnd 가 없으면 브라우저가 1x1 GIF 응답을 캐시해서 같은 동작이 한 번만 집계됩니다.
   function sendGoatcounter(name, props) {
     var g = CFG.goatcounter || {};
     if (!g.host) return;
     var label = labelOf(props);
-    var path = "/" + name + (label ? "/" + label : "");
-    safe(function () {
-      var img = new Image();
-      img.referrerPolicy = "no-referrer-when-downgrade";
-      img.src = g.host.replace(/\/+$/, "") + "/count"
-        + "?p=" + encodeURIComponent(path)
-        + "&t=" + encodeURIComponent(name);
-    });
+    // 탭 이동은 "페이지 조회"로, 나머지는 "이벤트"로 나눠 보냅니다.
+    var isPageview = (name === "screen");
+    var path = isPageview
+      ? "/" + (label || "screen")
+      : name + (label ? "/" + label : "");
+
+    var url = g.host.replace(/\/+$/, "") + "/count"
+      + "?p=" + encodeURIComponent(path)
+      + "&t=" + encodeURIComponent(name)
+      + "&rnd=" + Math.random().toString(36).slice(2);
+    if (!isPageview) url += "&e=true";
+    url += "&r=" + encodeURIComponent(safe(function () { return document.referrer; }, "") || "");
+    var s = safe(function () {
+      return [screen.width, screen.height, window.devicePixelRatio || 1].join(",");
+    }, "");
+    if (s) url += "&s=" + encodeURIComponent(s);
+
+    safe(function () { new Image().src = url; });
   }
 
   // 기록은 부가 기능입니다. 여기서 무슨 일이 생겨도 앱 동작을 막아서는 안 되므로
