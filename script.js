@@ -823,7 +823,7 @@ function renderNotebook() {
         </ul>
       </div>
 
-      <p class="nb-credit">만든이 · 산림교육원 장우형</p>
+      <p class="nb-credit">만든이 · 장우형</p>
     </div>
   `;
 }
